@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="ListingSecurityList.csv" CopyToOutputDirectory="Always" />
+        <Compile Include="utils.fs" />
+        <Compile Include="types.fs" />
+        <Compile Include="shareLoader.fs" />
+        <Compile Include="dividendLoader.fs" />
+        <Compile Include="summaryWriter.fs" />
+        <Compile Include="program.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FSharp.Data" Version="4.1.1" />
+    </ItemGroup>
+
+</Project>
