@@ -2,10 +2,13 @@
 
 open DividendExplorer
 open shareLoader
-open dividendLoader
+open chartLoader
+open dividendProcessor
 open summaryWriter
 
 [<EntryPoint>]
-let main _ =
-    loadShares() |> loadDividends |> writeSummary
+let main argv =
+    let shares = loadShares()
+    if Array.contains "load" argv then shares |> loadCharts |> writeLoadSummary
+    if Array.contains "process" argv then shares |> processDividends |> writeProcessSummary
     0

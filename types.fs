@@ -4,10 +4,16 @@ type ShareSymbol = string
 
 type Share = { symbol: ShareSymbol; name: string }
 
-type DividendStatus =
+type ChartStatus =
     | New
     | Cached
     | ErrorStatus of string
 
-type ShareWithDividends =
-    Share * DividendStatus
+type ShareWithChart =
+    Share * ChartStatus
+
+type DividendResult =
+    string
+
+type ShareWithDividendResult =
+    Share * DividendResult

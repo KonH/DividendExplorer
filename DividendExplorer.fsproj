@@ -10,7 +10,9 @@
         <Compile Include="utils.fs" />
         <Compile Include="types.fs" />
         <Compile Include="shareLoader.fs" />
-        <Compile Include="dividendLoader.fs" />
+        <Compile Include="chartStorage.fs" />
+        <Compile Include="chartLoader.fs" />
+        <Compile Include="dividendProcessor.fs" />
         <Compile Include="summaryWriter.fs" />
         <Compile Include="program.fs" />
     </ItemGroup>
