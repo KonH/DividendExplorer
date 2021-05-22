@@ -1,5 +1,6 @@
 module DividendExplorer.summaryWriter
 
+open System
 open System.IO
 open System.Text
 open DividendExplorer
@@ -15,12 +16,12 @@ let statusToStr(status: ChartStatus) =
     | New -> "New"
     | ErrorStatus(x) -> x
 
-let writeLoadItem(sb: StringBuilder, result: ShareWithChart) =
+let writeLoadItem(sb: StringBuilder, result: Share * ChartStatus) =
     let share, status = result
     let statusStr = statusToStr(status)
     join(sb, [ share.symbol; share.name; statusStr ]).AppendLine() |> ignore
 
-let writeLoadSummary(results: ShareWithChart list) =
+let writeLoadSummary(results: (Share * ChartStatus) list) =
     let path = "load_summary.csv"
     let sb = StringBuilder()
     join(sb, ["SYMBOL"; "NAME"; "RESULT"]).AppendLine() |> ignore
@@ -31,8 +32,8 @@ let writeLoadSummary(results: ShareWithChart list) =
 
 let divsToLines(divs: DividendResult) =
     [divs.marketPrice.ToString()
-     divs.divPerYear.ToString()
-     divs.divYield.ToString("p")
+     divs.divPerYear.ToString("F2")
+     divs.divYield.ToString("P2")
      divs.divCount.ToString()
      divs.firstDate.Date.ToShortDateString()
      divs.lastDate.Date.ToShortDateString()
@@ -59,13 +60,20 @@ let order(results: (Share * DividendResult) list) =
     results |>
     List.sortBy (fun (_, r) -> -r.divYield, -r.divIncreaseYears, -r.marketPrice, r.firstDate.ToUnixTimeSeconds(), -r.lastDate.ToUnixTimeSeconds())
 
+let isTrustedResult(result: Share * DividendResult) =
+    (snd result).lastDate.Year >= (DateTimeOffset.UtcNow.Year - 1)
+
 let writeProcessSummary(results: (Share * Result<DividendResult, string>) list) =
     let path = "process_summary.csv"
     let sb = StringBuilder()
     join(sb, ["SYMBOL"; "NAME"; "MARKET_PRICE"; "DIV_PER_YEAR"; "DIV_YIELD"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"; "DIV_INCREASE_YEARS"]).AppendLine() |> ignore
-    let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get |> order
-    write $"Found {List.length validResults} valid results of {List.length results} total results"
-    for r in validResults do
+    write $"Found {List.length results} source results"
+    let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get
+    write $"Found {List.length validResults} valid results"
+    let trustedResults = List.where isTrustedResult validResults
+    write $"Found {List.length trustedResults} trusted results"
+    let readyResults = trustedResults |> order
+    for r in readyResults do
         writeProcessItem(sb, r)
     File.WriteAllText(path, sb.ToString())
     write $"Process summary saved into {path}"

@@ -21,6 +21,6 @@ let loadShares() =
     utils.write $"Load source file from {sourceFilePath}"
     use reader = new StreamReader(sourceFilePath, Encoding.GetEncoding(1251))
     let provider = Securities.Load reader
-    let result = Seq.filter isShare provider.Rows |> Seq.map toShare |> List.ofSeq
+    let result = provider.Rows |> Seq.filter isShare |> Seq.map toShare |> List.ofSeq
     utils.write $"Found {Seq.length result} shares"
     result

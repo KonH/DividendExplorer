@@ -3,26 +3,18 @@ module DividendExplorer.dividendProcessor
 open System
 open DividendExplorer
 open FSharp.Data
+open utils
 open types
 open chartStorage
 
 let tryGetResult(chart: ChartData.Root) =
-    try
-        Ok chart.Chart.Result.[0]
-    with
-        e -> Error(e.ToString())
+    tryResult(fun _ -> chart.Chart.Result.[0])
 
 let tryGetPrice(result: ChartData.Result) =
-    try
-        Ok result.Meta.RegularMarketPrice
-    with
-        e -> Error(e.ToString())
+    tryResult(fun _ -> result.Meta.RegularMarketPrice)
 
 let tryGetDividends(result: ChartData.Result) =
-    try
-        Ok result.Events.Dividends
-    with
-        e -> Error(e.ToString())
+    tryResult(fun _ -> result.Events.Dividends)
 
 let calculateDivIncreaseYears(divs: (DateTimeOffset * float) list) =
     let mutable last = Double.MaxValue
@@ -32,9 +24,9 @@ let calculateDivIncreaseYears(divs: (DateTimeOffset * float) list) =
             let r = c <= last
             last <- c
             r)
-    let dates = List.map fst entriesWithIncrease
-    let minDate = List.min dates
-    let maxDate = List.max dates
+    let dates = entriesWithIncrease |> List.map fst
+    let minDate = dates |> List.min
+    let maxDate = dates |> List.max
     let delta = maxDate - minDate
     Math.Round(delta.TotalDays / 365., 2)
 
@@ -44,21 +36,21 @@ let trySkip count list =
 let calculateDivPerYear(divs: (DateTimeOffset * float) list) =
     let lastDivTs = divs |> List.last |> fst
     let lastYearDivs = List.where (fun (ts: DateTimeOffset, _) -> (lastDivTs - ts).TotalDays < 365.) divs
-    List.sumBy snd lastYearDivs
+    lastYearDivs |> List.sumBy snd
 
 let handleDividends(dividends: ChartData.Dividends) =
     let value = dividends.JsonValue
     match value with
     | JsonValue.Record r ->
         let tsEntries =
-            List.ofArray r |>
+            r |> List.ofArray |>
             List.map (fun (ts, value) -> (Int64.Parse(ts), value)) |>
             List.map (fun (ts, value) -> (DateTimeOffset.FromUnixTimeSeconds(ts), value)) |>
             List.map (fun (ts, value) -> (ts, value.["amount"].AsFloat())) |>
             List.sortBy fst
-        let divYears = calculateDivIncreaseYears tsEntries
-        let tss = List.map fst tsEntries
-        let divPerYear = calculateDivPerYear tsEntries
+        let divYears = tsEntries |> calculateDivIncreaseYears
+        let tss = tsEntries |> List.map fst
+        let divPerYear = tsEntries |> calculateDivPerYear
         Ok(r.Length, List.min tss, List.max tss, divYears, divPerYear)
     | _ -> Error "Parsing failed"
 
@@ -80,8 +72,8 @@ let combine(marketPrice: decimal, dividends: int * DateTimeOffset * DateTimeOffs
 
 let processChart(chart: ChartData.Root) =
     let result = tryGetResult chart
-    let marketPrice = Result.bind tryGetPrice result
-    let dividends = Result.bind tryGetDividends result |> Result.bind handleDividends
+    let marketPrice = result |> Result.bind tryGetPrice
+    let dividends = result |> Result.bind tryGetDividends |> Result.bind handleDividends
     let r = bind2(marketPrice, dividends)
     Result.bind combine r
 

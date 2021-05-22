@@ -11,9 +11,6 @@ type ChartStatus =
     | Cached
     | ErrorStatus of string
 
-type ShareWithChart =
-    Share * ChartStatus
-
 type DividendResult =
     {
         marketPrice: decimal
