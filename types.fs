@@ -13,7 +13,4 @@ type ShareWithChart =
     Share * ChartStatus
 
 type DividendResult =
-    string
-
-type ShareWithDividendResult =
-    Share * DividendResult
+    int

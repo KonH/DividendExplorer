@@ -6,40 +6,57 @@ open DividendExplorer
 open utils
 open types
 
+let join(sb: StringBuilder, lines: string list) =
+    sb.AppendJoin(";", lines)
+
 let statusToStr(status: ChartStatus) =
     match status with
     | Cached -> "Cached"
     | New -> "New"
     | ErrorStatus(x) -> x
 
-let divsToStr(divs: DividendResult) =
-    match divs with
-    | s -> s
-
 let writeLoadItem(sb: StringBuilder, result: ShareWithChart) =
     let share, status = result
     let statusStr = statusToStr(status)
-    sb.Append(share.symbol).Append(';').Append(share.name).Append(';').Append(statusStr).Append(';').AppendLine() |> ignore
-
-let writeProcessItem(sb: StringBuilder, result: ShareWithDividendResult) =
-    let share, divs = result
-    let divsStr = divsToStr(divs)
-    sb.Append(share.symbol).Append(';').Append(share.name).Append(';').Append(divsStr).Append(';').AppendLine() |> ignore
+    join(sb, [ share.symbol; share.name; statusStr ]).AppendLine() |> ignore
 
 let writeLoadSummary(results: ShareWithChart list) =
     let path = "load_summary.csv"
     let sb = StringBuilder()
-    sb.Append("SYMBOL;NAME;RESULT;").AppendLine() |> ignore
+    join(sb, ["SYMBOL"; "NAME"; "RESULT"]).AppendLine() |> ignore
     for r in results do
         writeLoadItem(sb, r)
     File.WriteAllText(path, sb.ToString())
     write $"Load summary saved into {path}"
 
-let writeProcessSummary(results: ShareWithDividendResult list) =
+let divsToLines(divs: DividendResult) =
+    let count = divs
+    [count.ToString()]
+
+let writeProcessItem(sb: StringBuilder, result: Share * DividendResult) =
+    let share, divs = result
+    let divsLines = divsToLines(divs)
+    join(sb, [ share.symbol; share.name ] @ divsLines).AppendLine() |> ignore
+
+let isValidResult(result: Share * Result<DividendResult, string>) =
+    let _, divResult = result
+    match divResult with
+    | Ok _ -> true
+    | Error _ -> false
+
+let tryGetValidResult(result: Share * Result<DividendResult, string>) =
+    let share, divResult = result
+    match divResult with
+    | Ok r -> Some(share, r)
+    | Error _ -> None
+
+let writeProcessSummary(results: (Share * Result<DividendResult, string>) list) =
     let path = "process_summary.csv"
     let sb = StringBuilder()
-    sb.Append("SYMBOL;NAME;RESULT;").AppendLine() |> ignore
-    for r in results do
+    join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"]).AppendLine() |> ignore
+    let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get
+    write $"Found {List.length validResults} valid results of {List.length results} total results"
+    for r in validResults do
         writeProcessItem(sb, r)
     File.WriteAllText(path, sb.ToString())
     write $"Process summary saved into {path}"
