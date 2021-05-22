@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Content Include="README.md" />
         <Content Include="ListingSecurityList.csv" CopyToOutputDirectory="Always" />
         <Compile Include="utils.fs" />
         <Compile Include="types.fs" />
