@@ -50,11 +50,27 @@ let tryGetValidResult(result: Share * Result<DividendResult, string>) =
     | Ok r -> Some(share, r)
     | Error _ -> None
 
+let result(result: Share * DividendResult) =
+    let _, r = result
+    r
+
+let firstDate(r: Share * DividendResult) =
+    let _, fd, _ = result(r)
+    fd.ToUnixTimeSeconds()
+
+let lastDate(r: Share * DividendResult) =
+    let _, _, ld = result(r)
+    ld.ToUnixTimeSeconds()
+
+let order(results: (Share * DividendResult) list) =
+    results |>
+    List.sortBy (fun x -> firstDate x, -lastDate x)
+
 let writeProcessSummary(results: (Share * Result<DividendResult, string>) list) =
     let path = "process_summary.csv"
     let sb = StringBuilder()
     join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"]).AppendLine() |> ignore
-    let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get
+    let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get |> order
     write $"Found {List.length validResults} valid results of {List.length results} total results"
     for r in validResults do
         writeProcessItem(sb, r)
