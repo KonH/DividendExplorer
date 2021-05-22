@@ -15,4 +15,12 @@ type ShareWithChart =
     Share * ChartStatus
 
 type DividendResult =
-    int * DateTimeOffset * DateTimeOffset * float
+    {
+        marketPrice: decimal
+        divCount: int;
+        firstDate: DateTimeOffset;
+        lastDate: DateTimeOffset;
+        divIncreaseYears: float;
+        divPerYear: float;
+        divYield: float;
+    }

@@ -6,13 +6,23 @@ open FSharp.Data
 open types
 open chartStorage
 
-let tryGetDividends(chart: ChartData.Root) =
+let tryGetResult(chart: ChartData.Root) =
     try
-        let result = chart.Chart.Result.[0]
-        let dividends = result.Events.Dividends
-        Ok dividends
+        Ok chart.Chart.Result.[0]
     with
-        e -> Error(e.GetType().FullName)
+        e -> Error(e.ToString())
+
+let tryGetPrice(result: ChartData.Result) =
+    try
+        Ok result.Meta.RegularMarketPrice
+    with
+        e -> Error(e.ToString())
+
+let tryGetDividends(result: ChartData.Result) =
+    try
+        Ok result.Events.Dividends
+    with
+        e -> Error(e.ToString())
 
 let calculateDivIncreaseYears(divs: (DateTimeOffset * float) list) =
     let mutable last = Double.MaxValue
@@ -28,6 +38,14 @@ let calculateDivIncreaseYears(divs: (DateTimeOffset * float) list) =
     let delta = maxDate - minDate
     Math.Round(delta.TotalDays / 365., 2)
 
+let trySkip count list =
+    if List.length list > count then List.skip count list else list
+
+let calculateDivPerYear(divs: (DateTimeOffset * float) list) =
+    let lastDivTs = divs |> List.last |> fst
+    let lastYearDivs = List.where (fun (ts: DateTimeOffset, _) -> (lastDivTs - ts).TotalDays < 365.) divs
+    List.sumBy snd lastYearDivs
+
 let handleDividends(dividends: ChartData.Dividends) =
     let value = dividends.JsonValue
     match value with
@@ -40,12 +58,32 @@ let handleDividends(dividends: ChartData.Dividends) =
             List.sortBy fst
         let divYears = calculateDivIncreaseYears tsEntries
         let tss = List.map fst tsEntries
-        Ok(r.Length, List.min tss, List.max tss, divYears)
+        let divPerYear = calculateDivPerYear tsEntries
+        Ok(r.Length, List.min tss, List.max tss, divYears, divPerYear)
     | _ -> Error "Parsing failed"
 
+let bind2(result1: Result<'r1, 'e>, result2: Result<'r2, 'e>) =
+    match result1 with
+    | Ok r1 ->
+        match result2 with
+        | Ok r2 -> Ok(r1, r2)
+        | Error e2 -> Error e2
+    | Error e1 -> Error e1
+
+let combine(marketPrice: decimal, dividends: int * DateTimeOffset * DateTimeOffset * float * float) =
+    let divCount, firstDate, lastDate, divYears, divPerYear = dividends
+    Ok {
+        marketPrice = marketPrice
+        divCount = divCount; firstDate = firstDate; lastDate = lastDate;
+        divIncreaseYears = divYears; divPerYear = divPerYear; divYield = divPerYear / float marketPrice
+    }
+
 let processChart(chart: ChartData.Root) =
-    let dividends = tryGetDividends chart
-    Result.bind handleDividends dividends
+    let result = tryGetResult chart
+    let marketPrice = Result.bind tryGetPrice result
+    let dividends = Result.bind tryGetDividends result |> Result.bind handleDividends
+    let r = bind2(marketPrice, dividends)
+    Result.bind combine r
 
 let processData(symbol: ShareSymbol) =
     let chart = tryLoadChart(symbol)

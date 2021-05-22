@@ -30,8 +30,13 @@ let writeLoadSummary(results: ShareWithChart list) =
     write $"Load summary saved into {path}"
 
 let divsToLines(divs: DividendResult) =
-    let count, firstDate, lastDate, divYears = divs
-    [count.ToString(); firstDate.Date.ToShortDateString(); lastDate.Date.ToShortDateString(); divYears.ToString()]
+    [divs.marketPrice.ToString()
+     divs.divPerYear.ToString()
+     divs.divYield.ToString("p")
+     divs.divCount.ToString()
+     divs.firstDate.Date.ToShortDateString()
+     divs.lastDate.Date.ToShortDateString()
+     divs.divIncreaseYears.ToString()]
 
 let writeProcessItem(sb: StringBuilder, result: Share * DividendResult) =
     let share, divs = result
@@ -50,30 +55,14 @@ let tryGetValidResult(result: Share * Result<DividendResult, string>) =
     | Ok r -> Some(share, r)
     | Error _ -> None
 
-let result(result: Share * DividendResult) =
-    let _, r = result
-    r
-
-let firstDate(r: Share * DividendResult) =
-    let _, fd, _, _ = result(r)
-    fd.ToUnixTimeSeconds()
-
-let lastDate(r: Share * DividendResult) =
-    let _, _, ld, _ = result(r)
-    ld.ToUnixTimeSeconds()
-
-let divIncreaseYears(r: Share * DividendResult) =
-    let _, _, _, divYears = result(r)
-    divYears
-
 let order(results: (Share * DividendResult) list) =
     results |>
-    List.sortBy (fun x -> -divIncreaseYears x, firstDate x, -lastDate x)
+    List.sortBy (fun (_, r) -> -r.divYield, -r.divIncreaseYears, -r.marketPrice, r.firstDate.ToUnixTimeSeconds(), -r.lastDate.ToUnixTimeSeconds())
 
 let writeProcessSummary(results: (Share * Result<DividendResult, string>) list) =
     let path = "process_summary.csv"
     let sb = StringBuilder()
-    join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"; "DIV_INCREASE_YEARS"]).AppendLine() |> ignore
+    join(sb, ["SYMBOL"; "NAME"; "MARKET_PRICE"; "DIV_PER_YEAR"; "DIV_YIELD"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"; "DIV_INCREASE_YEARS"]).AppendLine() |> ignore
     let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get |> order
     write $"Found {List.length validResults} valid results of {List.length results} total results"
     for r in validResults do
