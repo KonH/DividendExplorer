@@ -1,5 +1,6 @@
 module DividendExplorer.dividendProcessor
 
+open System
 open DividendExplorer
 open FSharp.Data
 open types
@@ -16,7 +17,13 @@ let tryGetDividends(chart: ChartData.Root) =
 let handleDividends(dividends: ChartData.Dividends) =
     let value = dividends.JsonValue
     match value with
-    | JsonValue.Record r -> Ok(r.Length)
+    | JsonValue.Record r ->
+        let tsEntries =
+            List.ofArray r |>
+            List.map (fun (ts, value) -> (Int64.Parse(ts), value)) |>
+            List.map (fun (ts, value) -> (DateTimeOffset.FromUnixTimeSeconds(ts), value))
+        let tss = List.map fst tsEntries
+        Ok(r.Length, List.min tss, List.max tss)
     | _ -> Error "Parsing failed"
 
 let processChart(chart: ChartData.Root) =

@@ -30,8 +30,8 @@ let writeLoadSummary(results: ShareWithChart list) =
     write $"Load summary saved into {path}"
 
 let divsToLines(divs: DividendResult) =
-    let count = divs
-    [count.ToString()]
+    let count, firstDate, lastDate = divs
+    [count.ToString(); firstDate.Date.ToShortDateString(); lastDate.Date.ToShortDateString()]
 
 let writeProcessItem(sb: StringBuilder, result: Share * DividendResult) =
     let share, divs = result
@@ -53,7 +53,7 @@ let tryGetValidResult(result: Share * Result<DividendResult, string>) =
 let writeProcessSummary(results: (Share * Result<DividendResult, string>) list) =
     let path = "process_summary.csv"
     let sb = StringBuilder()
-    join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"]).AppendLine() |> ignore
+    join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"]).AppendLine() |> ignore
     let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get
     write $"Found {List.length validResults} valid results of {List.length results} total results"
     for r in validResults do
