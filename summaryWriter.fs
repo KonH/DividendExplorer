@@ -30,8 +30,8 @@ let writeLoadSummary(results: ShareWithChart list) =
     write $"Load summary saved into {path}"
 
 let divsToLines(divs: DividendResult) =
-    let count, firstDate, lastDate = divs
-    [count.ToString(); firstDate.Date.ToShortDateString(); lastDate.Date.ToShortDateString()]
+    let count, firstDate, lastDate, divYears = divs
+    [count.ToString(); firstDate.Date.ToShortDateString(); lastDate.Date.ToShortDateString(); divYears.ToString()]
 
 let writeProcessItem(sb: StringBuilder, result: Share * DividendResult) =
     let share, divs = result
@@ -55,21 +55,25 @@ let result(result: Share * DividendResult) =
     r
 
 let firstDate(r: Share * DividendResult) =
-    let _, fd, _ = result(r)
+    let _, fd, _, _ = result(r)
     fd.ToUnixTimeSeconds()
 
 let lastDate(r: Share * DividendResult) =
-    let _, _, ld = result(r)
+    let _, _, ld, _ = result(r)
     ld.ToUnixTimeSeconds()
+
+let divIncreaseYears(r: Share * DividendResult) =
+    let _, _, _, divYears = result(r)
+    divYears
 
 let order(results: (Share * DividendResult) list) =
     results |>
-    List.sortBy (fun x -> firstDate x, -lastDate x)
+    List.sortBy (fun x -> -divIncreaseYears x, firstDate x, -lastDate x)
 
 let writeProcessSummary(results: (Share * Result<DividendResult, string>) list) =
     let path = "process_summary.csv"
     let sb = StringBuilder()
-    join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"]).AppendLine() |> ignore
+    join(sb, ["SYMBOL"; "NAME"; "DIV_COUNT"; "FIRST_DIV_DATE"; "LAST_DIV_DATE"; "DIV_INCREASE_YEARS"]).AppendLine() |> ignore
     let validResults = List.map tryGetValidResult results |> List.filter Option.isSome |> List.map Option.get |> order
     write $"Found {List.length validResults} valid results of {List.length results} total results"
     for r in validResults do

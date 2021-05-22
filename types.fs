@@ -15,4 +15,4 @@ type ShareWithChart =
     Share * ChartStatus
 
 type DividendResult =
-    int * DateTimeOffset * DateTimeOffset
+    int * DateTimeOffset * DateTimeOffset * float
